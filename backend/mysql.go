@@ -10,7 +10,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var db *sql.DB
+var DB *sql.DB
 
 type DBRecord interface {
 	Save() bool
@@ -32,14 +32,14 @@ func Struct2Map(obj DBRecord) map[string]interface{} {
 
 func MySQLInit() {
 	var err error
-	db, err = sql.Open("mysql", "alocaluser:apassword@/foragoodtimecall")
+	DB, err = sql.Open("mysql", "alocaluser:apassword@/foragoodtimecall")
 	if err != nil {
 		log.Println("SQL Error: " + err.Error())
 	}
 }
 
 func MySQLClose() {
-	db.Close()
+	DB.Close()
 }
 
 func MySQLInsert(table string, values map[string]interface{}) (bool, int64) {
@@ -56,7 +56,7 @@ func MySQLInsert(table string, values map[string]interface{}) (bool, int64) {
 		i++
 	}
 
-	query, err := db.Prepare("INSERT INTO " + table + " (" + strings.Join(valCol, ",") + ") VALUES (" + strings.Join(valStm, ",") + ")")
+	query, err := DB.Prepare("INSERT INTO " + table + " (" + strings.Join(valCol, ",") + ") VALUES (" + strings.Join(valStm, ",") + ")")
 	if err != nil {
 		log.Println("SQL Error: " + err.Error())
 		return false, 0
@@ -95,7 +95,7 @@ func MySQLUpdate(table string, values map[string]interface{}, where map[string]i
 
 	allVals := append(valArr, whereVals...)
 
-	query, err := db.Prepare("UPDATE " + table + " SET " + strings.Join(setStr, ", ") + " WHERE " + whereStr)
+	query, err := DB.Prepare("UPDATE " + table + " SET " + strings.Join(setStr, ", ") + " WHERE " + whereStr)
 
 	defer query.Close()
 
@@ -111,11 +111,13 @@ func MySQLUpdate(table string, values map[string]interface{}, where map[string]i
 func MySQLSelect(table string, where map[string]interface{}, fields []string) ([]map[string]string, error) {
 	// Build the query
 	whereStr, whereVals := formatWhere(where)
-	query, err := db.Prepare("SELECT * FROM " + table + " WHERE " + whereStr)
-	if err != nil {
-		log.Println("SQL Select Error 0: " + err.Error())
-		return nil, errors.New("Select failed.")
-	}
+	queryStr := "SELECT * FROM " + table + " WHERE " + whereStr
+
+	return MySQLQueryRows(queryStr, whereVals)
+}
+
+func MySQLQueryRows(queryStr string, queryVals map[string]interface{}) ([]map[string]string, error) {
+	query, err := DB.Prepare(queryStr)
 
 	defer query.Close()
 
